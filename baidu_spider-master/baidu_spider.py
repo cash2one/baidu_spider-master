@@ -8,7 +8,7 @@ import functools
 import re
 import time
 
-import getPreXiepeiyi
+import PreXiepeiyi
 
 from time import sleep
 
@@ -51,7 +51,8 @@ class BaiduSpider(object):
     
     def _rightTime(self,summary):
         '''
-        判断summary中的时间是否在2016年6月1日至今
+        对于种子协陪义动词判断summary中的时间是否在2016年6月1日至2016年8月17日
+        对于预扩展协陪义动词，判断summary中的时间是否在2016年8月20日至2016年9月21日   
         中国基金网  14小时前
         网易新闻  2016年08月12日 16:35
         '''
@@ -75,7 +76,7 @@ class BaiduSpider(object):
     def _get_html(self,link):
         try:
             request = urllib.request.Request(link)
-            res =urllib.request.urlopen(request,timeout=3)
+            res =urllib.request.urlopen(request,timeout=10)
         except Exception as e:       #爬虫卡住或其他异常，则再次尝试，尝试用post方式打开
             print(link+'\n')
             print(e)
@@ -142,6 +143,8 @@ class BaiduSpider(object):
             nodes_p = soup.find_all(name='p')
             for n in nodes_p:
                 p_cont = n.get_text(strip=True)
+                p_cont = re.sub(r'\s','',p_cont)               #去除段落中的换行符
+                p_cont = re.sub(r'\r','',p_cont)
                 for ver in Verbdic:
                     if ver in p_cont:
                         iter.append(p_cont)
@@ -181,43 +184,80 @@ class BaiduSpider(object):
                     content = ''
                     if self._rightTime(summary):
                         content = self._spiderDetail(a_link, f_error,Verbdic)
-                    f.write ('标题:'+titlename+'\t来源及时间:'+summary+
-                             '\t链接:'+a_link
-                             +'\t新闻内容:'+content+"\n")
+                        
+                        titlename = re.sub(r'\r','',titlename)
+                        titlename = re.sub(r'\s+?','，',titlename)
+                        titlename = titlename+'。'
+                        if content != '':
+                            f.write ('<title>标题:'+titlename+'\t<resource>来源及时间:'+summary+
+                                     '\t<link>链接:'+a_link
+                                     +'\t<content>新闻内容:'+content+"\n")
         except UnboundLocalError:
             return self._spider(f, f_error,Verbdic)
                         
                    
     def start(self,f, f_error,Verbdic):
-        self._spider(f,f_error,Verbdic)
+        try:
+            self._spider(f,f_error,Verbdic)
+        except Exception as e:
+            print(e)
+        
+    def __del__(self):
+        print ("__del__")
 
 
-def getVerbdic(ALFA,infile):
+def getPreVerbdic(ALFA,infile):
     '''
-    #infile；每一行包含“协陪义种子次\t预扩充协陪义动词\t相似度  ”
-    #提取出相似度大于ALFA的预扩充协陪义动词，并以列表的形式返回
+    #infile；每一行包含“协陪义种子次\t比较动词\t相似度  ”
+    #提取出相似度大于ALFA的比较动词，并以列表的形式返回
     '''
     verlist = []
     with open(infile,'rt',encoding='utf-8') as reader:
         lines = reader.readlines()
         for line in lines:
             ls = line.split()
-            if float(ls[2])>ALFA:
+            if float(ls[2])>=ALFA:
                 verlist.append(ls[1])
     return verlist
 
+def getBtVerDic(bt_file):
+    btlist = []
+    with open(bt_file,'rt',encoding='utf-8') as bt_r:
+        lines = bt_r.readlines()
+        for l in lines:
+            btlist.append(l[:len(l)-1])
+    return btlist
 
 if '__main__' == __name__:
     '''
-    #ALFA是预扩充的协陪义动词的相似度阈值
-    f存储爬取结果
-    #f_error存储读取新闻内容错误的链接
+    #ALFA：预扩充的协陪义动词的相似度阈值
+    #Verbdic：ALFA条件下的所有预扩充的协陪义动词，为所有动词生成一个f_over对象
+    #为每个预扩充协陪义动词，生成一个f对象、一个f_error对象
+    #f：存储一个预扩充协陪义动词的爬取结果
+    #f_error：存储读取新闻内容错误的链接
+    #f_over：存储已经下载所有句子的协陪义动词
     '''
     ALFA = 1.0
-    Verbdic = getPreXiepeiyi.getPreXiepeiyiVer(ALFA)
+    Verbdic,delbtlist = PreXiepeiyi.getPreXiepeiyiVer(ALFA)
+    btVwebdic = []
     
+    name_over = "./result_hownet-similarity/overVerb.txt"
+    with open(name_over,'wt',encoding='utf-8') as f_over:
+        for keyword in Verbdic:
+            name = "./result_hownet-similarity/links_"+keyword+".txt"
+            name_error = "./result_hownet-similarity/logError_"+keyword+".txt"
+            
+            with open(name,'wt',encoding='utf-8') as f, open(name_error,'wt',encoding='utf-8') as  f_error:
+                baidu_spider = BaiduSpider(keyword,800)
+                baidu_spider.start( f, f_error,Verbdic)
+                del baidu_spider  #删除对象
+                
+                f_over.write(keyword+'\n')  
+        
+    '''
     with open("links1.txt",'wt',encoding='utf-8') as f, open("logError1.txt",'wt',encoding='utf-8') as  f_error, open("overVerb1.txt",'wt',encoding='utf-8') as f_over:
         for keyword in Verbdic:
             baidu_spider = BaiduSpider(keyword,800)
             baidu_spider.start( f, f_error,Verbdic)
             f_over.write(keyword+'\n')
+    '''
