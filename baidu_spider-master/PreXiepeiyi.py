@@ -44,9 +44,12 @@ def getPreXiepeiyiVer(ALFA):
     #得到种子协陪义动词
     bt_file = './source_btxiepeiyi/bt_xiepeiyiVerb.dic'
     btlist = baidu_spider.getBtVerDic(bt_file)
+    
     #从相似度比较动词中删除种子协陪义动词
     delbtlist = set()
-    for r in rlist:
+    rlist_ = list(rlist)
+    for r in rlist_:
+        print(r)
         if r in btlist:
             rlist.remove(r)
             delbtlist.add(r)
@@ -62,9 +65,7 @@ if __name__ == '__main__':
     outfile1 = './result_hownet-similarity/pre_xiepeiyiVerb.dic'
     outfile2 = './result_hownet-similarity/del_bt_xiepeiyiVerb.dic'
     with open(outfile1,'wt',encoding='utf-8') as writer1,open(outfile2,'wt',encoding='utf-8') as writer2:
-        for r in rlist:
-            print(r+'\n')
-            writer1.write(r+'\n')
-        for r in delbtlist:
-            print(r+'\n')
-            writer2.write(r+'\n')            
+        for r1 in rlist:
+            writer1.write(r1+'\n')
+        for r2 in delbtlist:
+            writer2.write(r2+'\n')            
